@@ -1,0 +1,496 @@
+CREATE DATABASE DB2_VT22_L2;
+USE DB2_VT22_L2;
+
+create table users
+(
+    id       int primary key auto_increment,
+    username varchar(16) unique  not null,
+    pass     varchar(255)        not null,
+    email    varchar(255) unique not null,
+    fname    varchar(32),
+    lname    varchar(32),
+    age      int unsigned        not null
+);
+
+create table friends
+(
+    u_id int,
+    f_id int,
+    foreign key (u_id) references users (id),
+    foreign key (f_id) references users (id)
+);
+
+create table hobbies
+(
+    id          int primary key auto_increment,
+    name        varchar(32) unique not null,
+    description varchar(128)
+);
+
+create table users_hobbies
+(
+    u_id int,
+    h_id int,
+    foreign key (u_id) references users (id),
+    foreign key (h_id) references hobbies (id)
+);
+
+insert into users (username, pass, email, fname, lname, age)
+values ('arya', 'XPlgTwYDBD', 'arya@example.com', 'Arya', 'Stark', '15'); # 1
+insert into users (username, pass, email, fname, lname, age)
+values ('jsnow', 'ojPgMdpezTDr', 'snow@example.com', 'Jon', 'Snow', '20'); # 2
+insert into users (username, pass, email, fname, lname, age)
+values ('sansa', 'sy3NCbR', 'sansa_stark@example.com', 'Sansa', 'Stark', '18'); # 3
+insert into users (username, pass, email, fname, lname, age)
+values ('motherofdragons', 'VkDvqBIeq', 'daenerys@example.com', 'Daenerys', 'Targaryan', '20'); # 4
+insert into users (username, pass, email, fname, lname, age)
+values ('theimp', 'jlEpzx5PY3A', 'theimp@example.com', 'Tyrion', 'Lannister', '30'); # 5
+insert into users (username, pass, email, fname, lname, age)
+values ('jorah', 'GezN4CzXkjI', 'iamjorah@example.com', 'Jorah', 'Mormont', '48'); # 6
+insert into users (username, pass, email, fname, lname, age)
+values ('sam', 'Rk3eHqoNmwp', 'iheartbooks@example.com', 'Samwell', 'Tarly', '21'); # 7
+insert into users (username, pass, email, fname, lname, age)
+values ('cersei', 'wvk74vdiED', 'lookatme@example.com', 'Cersei', 'Lannister', '36'); # 8
+insert into users (username, pass, email, fname, lname, age)
+values ('jamie', 'puMd8mf7eax', 'thethingsido@example.com', 'Jamie', 'Lannister', '36'); # 9
+
+
+insert into hobbies (name, description)
+values ('Swords', 'When the sword of rebellion is drawn, the sheath should be thrown away.'); # 1
+insert into hobbies (name, description)
+values ('Books', 'So many books, so little time.'); # 2
+insert into hobbies (name, description)
+values ('Gold', 'Brass shines as fair to the ignorant as gold to the goldsmiths.'); # 3
+insert into hobbies (name, description)
+values ('Dragons', 'I do not care what comes after; I have seen the dragons on the wind of morning.'); # 4
+
+insert into friends (u_id, f_id)
+values (1, 2),
+       (1, 3),
+       (2, 1),
+       (2, 3),
+       (2, 4),
+       (2, 5),
+       (2, 7),
+       (3, 1),
+       (3, 2),
+       (3, 5),
+       (4, 2),
+       (4, 5),
+       (4, 6),
+       (5, 2),
+       (5, 3), -- repudiant
+       (5, 4),
+       (5, 6),
+       (5, 9),
+       (6, 4),
+       (6, 5),
+       (7, 2),
+       (8, 9),
+       (9, 8),
+       (9, 5);
+
+insert into users_hobbies (u_id, h_id)
+values (1, 1),
+       (2, 1),
+       (2, 4),
+       (3, 2),
+       (2, 3),
+       (4, 1),
+       (4, 4),
+       (5, 2),
+       (5, 3),
+       (5, 4),
+       (6, 1),
+       (6, 3),
+       (7, 2),
+       (8, 3),
+       (9, 1);
+
+/* ----------------------------------------------------------------- START 1. all_users -----------------------------------------------------------------
+Skapa en vy med en kolumn för username och en kolumn med no_of_friends där det är uträknat hur många vänner varje användare har.
+Ska kunna köras med SELECT * FROM all_users och då visa en rad för varje användare.
+*/
+
+-- Q1. View Creation --
+drop view if exists all_users;
+create view all_users as
+select username, count(*) as no_of_friends
+from friends
+         join users
+              on users.id = u_id
+group by username
+order by no_of_friends DESC;
+
+-- Q1. Query Result --
+select *
+from all_users;
+/* ----------------------------------------------------------------- END 1. all_users ----------------------------------------------------------------- */
+
+
+/* ------------------------------------------------------------ START 2. friends_list ---------------------------------------------------------------------
+Skapa en vy med användarnamn (username) och namnen på deras kompisar (friendname).
+Ska t ex gå att göra SELECT friendname FROM friends_list WHERE username = "arya" för att få ut lista med vänner till Arya. */
+
+-- Q2. View Creation --
+DROP VIEW IF EXISTS friends_list;
+create view friends_list as
+select u1.username, u2.username as friendname
+from users u1
+         join friends
+              on u1.id = u_id
+         inner join users u2
+                    on u2.id = f_id;
+
+-- Q2. View Query --
+select friendname
+from friends_list
+where username = 'arya';
+/* ------------------------------------------------------------ END 2. friends_list ----------------------------------------------------------------- */
+
+/* ------------------------------------------------------------ START 3. user_email()-----------------------------------------------------------------
+Skapa en procedure som när den anropas med CALL user_email(); ger en lista med epost, fname och lname för alla användare i DB. */
+
+-- Q3. Procedure Creation --
+DROP PROCEDURE IF EXISTS user_email;
+DELIMITER //
+CREATE PROCEDURE user_email()
+BEGIN
+    SELECT email, fname AS first_name, lname as last_name
+    FROM users;
+END //
+
+DELIMITER ;
+
+-- Q3. Stored Procedure call --
+CALL user_email();
+
+
+/* ------------------------------------------------------------ START 4. add_hobby(hobby_name, description) -----------------------------------------------------------------
+Skapa en procedure som lägger till en hobby i tabellen hobbies. */
+
+-- Q4. Procedure Creation --
+DROP PROCEDURE IF EXISTS add_hobby;
+delimiter //
+create procedure add_hobby(IN h_name varchar(32), IN h_description varchar(128))
+begin
+    insert into hobbies(name, description) values (h_name, h_description);
+
+end //
+
+delimiter ;
+
+-- Q4. Stored Procedure call --
+call add_hobby('Dragonhunting', 'A splendid sport for dragonslayers');
+
+-- Q4. Query Result --
+select *
+from hobbies;
+
+/* ------------------------------------------------------------ END 4. add_hobby(hobby_name, description) ----------------------------------------------------------------- */
+
+/* ------------------------------------------------------------ START 5. 5. add_user(username, pass, fname, lname, email, age) -----------------------------------------------------------------
+Skapa en procedure som lägger till en user. För alla nya användare som läggs till ska även läggas till en koppling så att de får hobbyn "Swords".
+Proceduren ska returnera/svara med det id som nya användaren lagts till på. */
+
+-- drop procedure add_user;
+
+-- Q5. Procedure Creation --
+DROP PROCEDURE IF EXISTS add_user;
+delimiter $$
+create procedure add_user(in param_username varchar(16), in param_pass varchar(255), in param_email varchar(255),
+                          in param_fname varchar(32), in param_lname varchar(32), in param_age int)
+begin
+    insert into users (username, pass, email, fname, lname, age)
+    values (param_username, param_pass, param_email, param_fname, param_lname, param_age);
+    insert into users_hobbies (u_id, h_id) values (last_insert_id(), 1);
+end $$
+
+delimiter ;
+
+
+-- Q5. Stored Procedure Call --
+call add_user('Estel', 'MyLoveLegolas123IHateGimli', 'Isildurs2931@example.com', 'Aragon II', 'Son Of Arathorn', '210');
+# 10
+
+-- Q5. Query Result --
+select users.username, hobbies.name as hobby_name
+from users
+         join users_hobbies
+              on users.id = users_hobbies.u_id
+         join hobbies
+              on users_hobbies.h_id = hobbies.id;
+
+/* ------------------------------------------------------------ START 6.add_friendship(id_a, id_b) -----------------------------------------------------------------
+Vid lagring av nya vänner så måste det ligga två rader för att kopplingarna ska fungera.
+Skriv en procedure som tar två användar-id och lagrar (id_a, id_b) och (id_b, id_a) i tabellen för Friends.*/
+
+-- Q6. Procedure Creation --
+DROP PROCEDURE IF EXISTS add_friendship;
+delimiter //
+create procedure add_friendship(in param_id_a int, in param_id_b int)
+begin
+    insert into friends (u_id, f_id) values (param_id_a, param_id_b);
+    insert into friends (u_id, f_id) values (param_id_b, param_id_a);
+end //
+
+delimiter ;
+
+-- Q6. Stored Procedure Call --
+call add_friendship(10, 2);
+
+-- Q6. Query result --
+select *
+from friends_list;
+
+/* ------------------------------------------------------------ START 7. agecheck -----------------------------------------------------------------
+Gör triggers som innan insert och update kontrollerar att ålder på användare är 15 eller mer än 15.
+Om ålder är angiven till mindre än 15 så ska ett meddelande skrivas ut och ingen insert eller update köras.
+*/
+DROP TRIGGER IF EXISTS insert_agecheck;
+DELIMITER //
+CREATE TRIGGER insert_agecheck
+    BEFORE INSERT
+    ON users
+    FOR EACH ROW
+
+BEGIN
+    IF new.age >= 15 THEN
+        SET new.age = new.age;
+    ELSE
+        signal sqlstate '45000' -- "45000" är ett eget exception | Utskrifter && felsökning select "Meddelande 1" as Status
+            set MESSAGE_TEXT =
+                    'Parameter age was given a lower value than fifteen. You must be fifteen to enter this application!';
+    END IF;
+END//
+
+DELIMITER ;
+DROP TRIGGER IF EXISTS update_agecheck;
+DELIMITER //
+CREATE TRIGGER update_agecheck
+    BEFORE UPDATE
+    ON users
+    FOR EACH ROW
+BEGIN
+    IF NEW.age >= 15 THEN
+        SET new.age = new.age;
+    else
+        signal sqlstate '45000' -- "45000" är ett eget exception | Utskrifter && felsökning select "Meddelande 1" as Status
+            set MESSAGE_TEXT =
+                    'Parameter age was given a lower value than fifteen. You must be fifteen to enter this application!';
+    END IF;
+END//
+DELIMITER ;
+-- Test unit 'Gollum' result [accepted] --
+insert into users (username, pass, email, fname, lname, age)
+values ('Gollum', 'MyPreciousIsPrecious', 'crawlingcreature@example.com', 'Sméagol', 'TolkienDidntGiveMeALastName',
+        600);
+-- See Gollum added in users
+SELECT *
+FROM users;
+
+-- INSERT test unit 'Ekko' result [error] => (print message in trigger) --
+/*insert into users (username, pass, email, fname, lname, age)
+values ('Ekko', 'LeagueOfLegends', 'ekko@example.com', 'Nassim', 'Taleb', 3); # 13
+*/
+-- UPDATE AGE [Test unit(1)]:  'sansa' result [accepted] --
+update users
+set age = 19
+where username = 'sansa';
+
+-- UPDATE [Test unit(2)]: 'id = 1' result [fail] --
+/*
+update users
+set age = 14
+where id = 1;
+SELECT *
+FROM USERS;
+ */
+
+
+/* ------------------------------------------------------------ END 7. agecheck ----------------------------------------------------------------- */
+
+/* ------------------------------------------------------------ START 8. greeting -----------------------------------------------------------------
+Gör en funktion som returnerar en valfri hälsningsfras tillsammans med användarens förnamn (att använda vid t ex vid mailutskick).
+   Ska kunna köras i exempelvis SELECT email, greeting(fname) FROM users;
+ */
+
+CREATE FUNCTION greeting(message text)
+    RETURNS TEXT
+    DETERMINISTIC/*
+    [Deterministic functions]
+                    always result in the same output every time they are called
+                    with a fixed set of input values and given the same condition of the database.
+                    For example, AVG() function always results the same result given the qualifications stated above.
+                    2. Nondeterministic functions :
+    [Nondeterministic functions]
+                    result in different output each time they are called with a fixed set of input
+                    values even if the database state that they access remains the same.
+                    For example, GETDATE() function, results the current date and time value, always a different value.
+                    */
+BEGIN
+    RETURN message;
+END;
+
+SELECT email, greeting('Hej du där') as Message
+from users;
+
+/* ------------------------------------------------------------ END 8. greeting -----------------------------------------------------------------*/
+/* ------------------------------------------------------------ START 9. suggest_friends(username) -----------------------------------------------------------------
+ gör en procedure som för en användare
+  Lyckat resultat: ger en lista med som mest 3 st användare (username) som den --INTE-- är kompis
+  MEN som någon av den användarens kompisar är kompis med.
+
+      I listan ska det även stå med vem som är gemensam kompis.
+      Om det inte finns finns några kompisförslag så ska det skrivas ut ett meddelande om det istället.
+
+ */
+
+DROP PROCEDURE IF EXISTS suggest_friends;
+DELIMITER @
+CREATE PROCEDURE suggest_friends(param_username varchar(16))
+BEGIN
+-- f1.u_id as user, f1.f_id as user_s_friend, f2.u_id,
+    SELECT  f2.f_id as friend_friends, u1.username
+    FROM friends f1
+             JOIN friends f2
+                  ON f1.f_id = f2.u_id
+             JOIN users u1 ON f2.f_id = u1.id
+             JOIN users u2 ON u2.id = f1.u_id
+    WHERE u2.username = param_username
+      AND f1.u_id != f2.f_id
+      AND f2.f_id NOT IN (SELECT f_id FROM friends where u_id = u2.id)
+    limit 3;
+
+END @
+DELIMITER ;
+
+
+call suggest_friends('sansa');
+
+
+/* ------------------------------------------------------------ START 9. suggest_friends(username)  ----------------------------------------------------------------- */
+/* ------------------------------------------------------------ START 10. delete_user(id) -----------------------------------------------------------------
+Skapa en stored procedure för att ta bort en användare.
+   (Den ska i princip göra samma sak som om vi hade haft ON DELETE CASCADE på lämpliga ställen (men nu har vi inte det och måste lösa det med en procedure istället).) */
+
+
+DROP PROCEDURE IF EXISTS delete_user;
+CREATE PROCEDURE delete_user(param_username varchar(16))
+BEGIN
+
+    ALTER TABLE friends
+        DROP CONSTRAINT friends_ibfk_1;
+
+    ALTER TABLE friends
+        DROP CONSTRAINT friends_ibfk_2;
+
+    ALTER TABLE friends
+        ADD CONSTRAINT
+            FOREIGN KEY (u_id)
+                REFERENCES users
+                    (id)
+                ON DELETE CASCADE ON UPDATE NO ACTION;
+
+    ALTER TABLE friends
+        ADD CONSTRAINT
+            FOREIGN KEY (f_id)
+                REFERENCES users
+                    (id)
+                ON DELETE CASCADE ON UPDATE NO ACTION;
+
+    ALTER TABLE users_hobbies
+        DROP CONSTRAINT users_hobbies_ibfk_1;
+    ALTER TABLE users_hobbies
+        DROP CONSTRAINT users_hobbies_ibfk_2;
+
+    ALTER TABLE users_hobbies
+        ADD CONSTRAINT
+            FOREIGN KEY (u_id)
+                REFERENCES users
+                    (id)
+                ON DELETE CASCADE ON UPDATE NO ACTION;
+
+    ALTER TABLE users_hobbies
+        ADD CONSTRAINT
+            FOREIGN KEY (h_id)
+                REFERENCES hobbies
+                    (id)
+                ON DELETE CASCADE ON UPDATE NO ACTION;
+
+    DELETE
+    FROM users
+    WHERE username = param_username;
+
+END;
+
+call delete_user('theimp');
+
+select *
+from friends;
+select *
+from users_hobbies;
+select *
+from users;
+-- END ON DELETE VÄNNER
+
+-- START ON DELETE HOBBIES
+
+/* ------------------------------------------------------------ START 11. egen procedure -----------------------------------------------------------------
+Skapa en egen procedure som gör något som är meningsfullt och användbart med databasen. Hitta på något eget som kan passa och vara intressant. Skriv tydliga kommentarer och queries som visar hur den används.
+*/
+/*
+    my_friend_total_friends stoproc has a id int parameter that will
+    query for a table of two columns. the result of the query
+    will display the chosen user.id's friends and the friends total friends as total_friends
+*/
+drop procedure if exists my_friend_total_friends;
+delimiter @
+create procedure my_friend_total_friends(param_id int)
+begin
+    SELECT u.username, COUNT(u.username) AS 'total_friends'
+    FROM friends f1
+             JOIN users u
+                  ON u.id = f1.f_id
+             JOIN friends f2
+                  ON f2.u_id = u.id
+    WHERE f1.u_id = param_id
+    GROUP BY username;
+
+end @
+delimiter ;
+
+call my_friend_total_friends(1);
+/* ------------------------------------------------------------ END 11. egen procedure -----------------------------------------------------------------
+
+/* ------------------------------------------------------------ START 12. egen function -----------------------------------------------------------------
+Skapa en egen function som gör något som är meningsfullt och användbart med databasen.
+   Hitta på något eget som kan passa och vara intressant.
+   Skriv tydliga kommentarer och queries som visar hur den används.
+*/
+
+/* is_adult function
+   takes param of a username
+   returns two different texts depending on the user's age
+   if the user's age < 18 then returned text will be 'User is not an adult'
+   else the returned text will be 'User is an adult'
+   */
+drop function if exists is_adult;
+delimiter @
+create function is_adult(param_username varchar(16))
+    RETURNS TEXT
+    deterministic
+BEGIN
+    declare isAdultOrNotMessage text;
+    declare myAge int;
+    SET myAge = (select age from users where param_username = username);
+    if myAge < 18 then
+        set isAdultOrNotMessage = 'User is not an adult';
+        elseif myAge >= 18 then
+        set isAdultOrNotMessage = 'User is an adult';
+    end if;
+    return isAdultOrNotMessage;
+end;
+delimiter @
+
+select is_adult('cersei');
